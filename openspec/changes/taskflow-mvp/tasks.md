@@ -72,8 +72,8 @@
 
 ## 10. 배포
 
-- [ ] 10.1 Vercel 프로젝트 연결 (vercel link)
-- [ ] 10.2 Vercel Storage Neon 통합 설치 (DATABASE_URL 자동 주입 확인)
-- [ ] 10.3 운영 DB 테이블 생성 (Neon에 create_all 실행)
-- [ ] 10.4 첫 배포 (vercel deploy --prod) + 5분 내 완료 확인
+- [x] 10.1 Vercel 프로젝트 연결 (vercel link)
+- [x] 10.2 Vercel Storage Neon 통합 설치 (DATABASE_URL 자동 주입 확인)
+- [x] 10.3 운영 DB 테이블 생성 (Neon에 create_all 실행)
+- [x] 10.4 첫 배포 (vercel deploy --prod) + 5분 내 완료 확인
 - [ ] 10.5 전체 흐름 수동 검증 (회원가입→로그인→팀→칸반→채팅→모바일)
