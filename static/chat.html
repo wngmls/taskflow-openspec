@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskFlow — 채팅</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-100 flex flex-col">
+<header class="bg-white border-b px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-4">
+    <span class="text-teal-600 font-bold">TaskFlow</span>
+    <span id="teamName" class="text-sm text-gray-600 font-medium"></span>
+    <nav class="hidden md:flex gap-3 text-sm">
+      <a href="/kanban.html" class="text-gray-500 hover:text-gray-700">칸반</a>
+      <a href="/chat.html" class="font-semibold text-teal-600 border-b-2 border-teal-600 pb-0.5">채팅</a>
+      <a href="/members.html" class="text-gray-500 hover:text-gray-700">멤버</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-2">
+    <span id="pollStatus" class="text-xs text-green-500">● 5초마다 새로고침</span>
+    <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600 hidden md:block">로그아웃</button>
+  </div>
+</header>
+<div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 max-w-2xl w-full mx-auto"></div>
+<div class="bg-white border-t p-3 max-w-2xl w-full mx-auto">
+  <div class="flex gap-2 items-end">
+    <div class="flex-1">
+      <textarea id="msgInput" rows="1" maxlength="1100" placeholder="메시지 입력 (1000자 이내)…"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"></textarea>
+      <p id="charCount" class="text-xs text-right text-gray-400 mt-0.5">0 / 1000</p>
+    </div>
+    <button id="sendBtn" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 self-end">전송</button>
+  </div>
+</div>
+<script src="/js/api.js"></script>
+<script>
+  if (!getToken()) { location.href = "/login.html"; }
+  const user = getUser();
+  if (!user || !user.team_id) { location.href = "/team.html"; }
+  const teamId = user.team_id;
+  let lastSince = null, pollTimer = null, isFocused = false;
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await apiFetch("/auth/logout", { method: "POST" }); removeToken(); removeUser(); location.href = "/login.html";
+  });
+
+  async function loadTeam() {
+    const t = await apiJSON("/teams/" + teamId);
+    if (t) document.getElementById("teamName").textContent = t.name + " 팀 · 채팅";
+  }
+
+  function renderMsg(m) {
+    const isMine = m.user_id === user.id;
+    const el = document.createElement("div");
+    el.className = "flex " + (isMine ? "justify-end" : "justify-start");
+    el.dataset.id = m.id;
+    const time = new Date(m.created_at).toLocaleTimeString("ko", { hour: "2-digit", minute: "2-digit" });
+    el.innerHTML = `<div class="max-w-xs">
+      <p class="text-xs text-gray-400 mb-0.5 ${isMine ? "text-right" : ""}">${isMine ? "나" : m.user_email.split("@")[0]} · ${time}</p>
+      <div class="relative group">
+        <p class="${isMine ? "bg-teal-600 text-white" : "bg-white border text-gray-800"} rounded-xl px-3 py-2 text-sm whitespace-pre-wrap">${escHtml(m.content)}</p>
+        ${isMine ? `<button data-id="${m.id}" class="del-btn hidden group-hover:block absolute top-1 right-1 text-xs text-red-300 hover:text-red-500">🗑</button>` : ""}
+      </div>
+    </div>`;
+    return el;
+  }
+
+  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  function scrollBottom() {
+    const el = document.getElementById("messages");
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function fetchMessages(init = false) {
+    const q = (!init && lastSince) ? "?since=" + encodeURIComponent(lastSince) : "";
+    const data = await apiJSON("/teams/" + teamId + "/messages" + q);
+    if (!data) return;
+    const container = document.getElementById("messages");
+    if (init) {
+      container.innerHTML = "";
+      if (data.length === 0) {
+        container.innerHTML = `<div class="text-center py-12 text-gray-300">💬<br>아직 대화가 없습니다<br><span class="text-xs">첫 메시지를 보내 팀원과 대화를 시작하세요</span></div>`;
+        return;
+      }
+    }
+    data.forEach(m => {
+      const existing = container.querySelector("[data-id='" + m.id + "']");
+      if (!existing) {
+        const ghost = container.querySelector(".text-gray-300");
+        if (ghost) ghost.remove();
+        container.appendChild(renderMsg(m));
+      }
+    });
+    if (data.length > 0) lastSince = data[data.length - 1].created_at;
+    scrollBottom();
+    // 삭제 버튼 이벤트
+    container.querySelectorAll(".del-btn").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        await apiJSON("/messages/" + id, { method: "DELETE" });
+        container.querySelector("[data-id='" + id + "']")?.remove();
+      };
+    });
+  }
+
+  function startPoll() {
+    clearInterval(pollTimer);
+    const interval = isFocused ? 2000 : 5000;
+    pollTimer = setInterval(() => fetchMessages(false), interval);
+  }
+
+  document.getElementById("msgInput").addEventListener("focus", () => { isFocused = true; startPoll(); });
+  document.getElementById("msgInput").addEventListener("blur", () => { isFocused = false; startPoll(); });
+  document.getElementById("msgInput").addEventListener("input", () => {
+    const len = document.getElementById("msgInput").value.length;
+    const counter = document.getElementById("charCount");
+    counter.textContent = len + " / 1000";
+    counter.className = "text-xs text-right mt-0.5 " + (len > 1000 ? "text-red-500 font-semibold" : "text-gray-400");
+    document.getElementById("sendBtn").disabled = len > 1000;
+  });
+
+  document.getElementById("sendBtn").addEventListener("click", sendMsg);
+  document.getElementById("msgInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+
+  async function sendMsg() {
+    const content = document.getElementById("msgInput").value.trim();
+    if (!content || content.length > 1000) return;
+    document.getElementById("msgInput").value = "";
+    document.getElementById("charCount").textContent = "0 / 1000";
+    try {
+      await apiJSON("/teams/" + teamId + "/messages", { method: "POST", body: JSON.stringify({ content }) });
+      fetchMessages(false);
+    } catch (err) { alert(err.message || "전송 실패"); }
+  }
+
+  loadTeam();
+  fetchMessages(true).then(startPoll);
+</script>
+</body>
+</html>

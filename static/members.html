@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskFlow — 멤버</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-100">
+<header class="bg-white border-b px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-4">
+    <span class="text-teal-600 font-bold">TaskFlow</span>
+    <span id="teamName" class="text-sm text-gray-600 font-medium"></span>
+    <nav class="hidden md:flex gap-3 text-sm">
+      <a href="/kanban.html" class="text-gray-500 hover:text-gray-700">칸반</a>
+      <a href="/chat.html" class="text-gray-500 hover:text-gray-700">채팅</a>
+      <a href="/members.html" class="font-semibold text-teal-600 border-b-2 border-teal-600 pb-0.5">멤버</a>
+    </nav>
+  </div>
+  <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600">로그아웃</button>
+</header>
+<main class="max-w-lg mx-auto mt-8 px-4">
+  <div class="bg-white rounded-2xl shadow p-6">
+    <h2 class="font-bold text-gray-800 mb-4">팀 멤버 <span id="memberCount" class="text-sm text-gray-400"></span></h2>
+    <div id="memberList" class="space-y-3"></div>
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+  if (!getToken()) { location.href = "/login.html"; }
+  const user = getUser();
+  if (!user || !user.team_id) { location.href = "/team.html"; }
+  const teamId = user.team_id;
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await apiFetch("/auth/logout", { method: "POST" }); removeToken(); removeUser(); location.href = "/login.html";
+  });
+
+  async function load() {
+    const [team, members] = await Promise.all([
+      apiJSON("/teams/" + teamId),
+      apiJSON("/teams/" + teamId + "/members")
+    ]);
+    if (team) document.getElementById("teamName").textContent = team.name + " 팀";
+    if (members) {
+      document.getElementById("memberCount").textContent = "(" + members.length + ")";
+      document.getElementById("memberList").innerHTML = members.map(m => `
+        <div class="flex items-center justify-between py-2 border-b last:border-0">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-sm">
+              ${m.email[0].toUpperCase()}
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-800">${m.email}${m.user_id === user.id ? " <span class='text-xs text-gray-400'>(나)</span>" : ""}</p>
+              <p class="text-xs text-gray-400">${new Date(m.joined_at).toLocaleDateString("ko")}</p>
+            </div>
+          </div>
+          ${m.is_owner ? '<span class="text-yellow-500 text-sm">★ owner</span>' : '<span class="text-xs text-gray-400">member</span>'}
+        </div>`).join("");
+    }
+  }
+  load();
+</script>
+</body>
+</html>

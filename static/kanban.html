@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskFlow — 칸반</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .card{cursor:grab;transition:opacity .15s}.card.dragging{opacity:.4}
+  .col-drop{transition:background .15s}.col-drop.over{background:#f0fdf4}
+</style>
+</head>
+<body class="min-h-screen bg-gray-100">
+<header class="bg-white border-b px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-4">
+    <span class="text-teal-600 font-bold">TaskFlow</span>
+    <span id="teamName" class="text-sm text-gray-600 font-medium"></span>
+    <nav class="hidden md:flex gap-3 text-sm">
+      <a href="/kanban.html" class="font-semibold text-teal-600 border-b-2 border-teal-600 pb-0.5">칸반</a>
+      <a href="/chat.html" class="text-gray-500 hover:text-gray-700">채팅</a>
+      <a href="/members.html" class="text-gray-500 hover:text-gray-700">멤버</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="flex gap-2 text-xs">
+      <button data-f="" class="filter-btn px-2 py-1 rounded bg-teal-600 text-white">전체</button>
+      <button data-f="me" class="filter-btn px-2 py-1 rounded bg-gray-200 text-gray-600">@me</button>
+      <button data-f="unassigned" class="filter-btn px-2 py-1 rounded bg-gray-200 text-gray-600">미할당</button>
+    </div>
+    <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600 hidden md:block">로그아웃</button>
+    <button id="menuBtn" class="md:hidden text-gray-600">☰</button>
+  </div>
+</header>
+<!-- 모바일 메뉴 -->
+<div id="mobileMenu" class="hidden fixed inset-0 z-50 bg-black bg-opacity-30" onclick="this.classList.add('hidden')">
+  <div class="absolute right-0 top-0 h-full w-64 bg-white shadow-xl p-6 space-y-4" onclick="event.stopPropagation()">
+    <p id="mobileUser" class="text-sm text-gray-500"></p>
+    <a href="/kanban.html" class="block py-2 text-teal-600 font-semibold">📋 칸반</a>
+    <a href="/chat.html" class="block py-2 text-gray-700">💬 채팅</a>
+    <a href="/members.html" class="block py-2 text-gray-700">👥 팀 멤버</a>
+    <button id="mobileLogout" class="block py-2 text-gray-700">🚪 로그아웃</button>
+  </div>
+</div>
+<!-- 칸반 보드 -->
+<main class="p-4 overflow-x-auto">
+  <div class="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
+    <div id="col-TODO" data-status="TODO" class="col-drop w-72 md:w-auto bg-white rounded-xl shadow p-3 space-y-2">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-bold text-gray-700">TODO <span id="cnt-TODO" class="text-xs text-gray-400"></span></h2>
+        <button data-col="TODO" class="add-btn text-teal-600 font-bold text-xl leading-none hover:text-teal-800">+</button>
+      </div>
+      <div id="inline-TODO" class="hidden">
+        <input class="inline-input w-full border rounded px-2 py-1 text-sm" placeholder="태스크 제목...">
+        <p class="text-xs text-gray-400 mt-1">Enter: 저장 · Esc: 취소</p>
+      </div>
+      <div id="cards-TODO" class="space-y-2 min-h-8"></div>
+    </div>
+    <div id="col-DOING" data-status="DOING" class="col-drop w-72 md:w-auto bg-white rounded-xl shadow p-3 space-y-2">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-bold text-gray-700">DOING <span id="cnt-DOING" class="text-xs text-gray-400"></span></h2>
+        <button data-col="DOING" class="add-btn text-teal-600 font-bold text-xl leading-none hover:text-teal-800">+</button>
+      </div>
+      <div id="inline-DOING" class="hidden">
+        <input class="inline-input w-full border rounded px-2 py-1 text-sm" placeholder="태스크 제목...">
+        <p class="text-xs text-gray-400 mt-1">Enter: 저장 · Esc: 취소</p>
+      </div>
+      <div id="cards-DOING" class="space-y-2 min-h-8"></div>
+    </div>
+    <div id="col-DONE" data-status="DONE" class="col-drop w-72 md:w-auto bg-white rounded-xl shadow p-3 space-y-2">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-bold text-gray-700">DONE <span id="cnt-DONE" class="text-xs text-gray-400"></span></h2>
+        <button data-col="DONE" class="add-btn text-teal-600 font-bold text-xl leading-none hover:text-teal-800">+</button>
+      </div>
+      <div id="inline-DONE" class="hidden">
+        <input class="inline-input w-full border rounded px-2 py-1 text-sm" placeholder="태스크 제목...">
+        <p class="text-xs text-gray-400 mt-1">Enter: 저장 · Esc: 취소</p>
+      </div>
+      <div id="cards-DONE" class="space-y-2 min-h-8"></div>
+    </div>
+  </div>
+</main>
+<!-- 카드 상세 모달 -->
+<div id="modal" class="hidden fixed inset-0 z-40 bg-black bg-opacity-40 flex items-center justify-center px-4">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+    <div class="flex justify-between items-start">
+      <h3 id="modalTitle" class="font-bold text-gray-800 text-lg"></h3>
+      <button id="modalClose" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+    </div>
+    <div class="space-y-2 text-sm">
+      <div><label class="text-gray-500">제목</label>
+        <input id="modalTitleInput" class="w-full border rounded px-2 py-1 mt-1"></div>
+      <div><label class="text-gray-500">상태</label>
+        <div class="flex gap-2 mt-1">
+          <button data-s="TODO" class="status-btn px-2 py-1 rounded text-xs border">TODO</button>
+          <button data-s="DOING" class="status-btn px-2 py-1 rounded text-xs border">DOING</button>
+          <button data-s="DONE" class="status-btn px-2 py-1 rounded text-xs border">DONE</button>
+        </div>
+      </div>
+      <p id="modalMeta" class="text-xs text-gray-400"></p>
+    </div>
+    <div class="flex justify-between pt-2">
+      <button id="modalDelete" class="text-red-500 text-sm hover:text-red-700">🗑 삭제</button>
+      <button id="modalSave" class="bg-teal-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-teal-700">저장</button>
+    </div>
+  </div>
+</div>
+<script src="/js/api.js"></script>
+<script>
+  if (!getToken()) { location.href = "/login.html"; }
+  const user = getUser();
+  if (!user || !user.team_id) { location.href = "/team.html"; }
+  const teamId = user.team_id;
+  let tasks = [], currentFilter = "", dragId = null, modalTask = null;
+
+  document.getElementById("menuBtn").addEventListener("click", () => document.getElementById("mobileMenu").classList.toggle("hidden"));
+  document.getElementById("mobileUser").textContent = user?.email || "";
+  [document.getElementById("logoutBtn"), document.getElementById("mobileLogout")].forEach(btn => btn?.addEventListener("click", async () => {
+    await apiFetch("/auth/logout", { method: "POST" }); removeToken(); removeUser(); location.href = "/login.html";
+  }));
+
+  async function loadTeam() {
+    const t = await apiJSON("/teams/" + teamId);
+    if (t) document.getElementById("teamName").textContent = t.name + " 팀";
+  }
+
+  async function loadTasks() {
+    const q = currentFilter ? "?filter=" + currentFilter : "";
+    const data = await apiJSON("/teams/" + teamId + "/tasks" + q);
+    if (!data) return;
+    tasks = data;
+    render();
+  }
+
+  function render() {
+    ["TODO", "DOING", "DONE"].forEach(s => {
+      const col = tasks.filter(t => t.status === s);
+      document.getElementById("cnt-" + s).textContent = col.length;
+      const container = document.getElementById("cards-" + s);
+      container.innerHTML = "";
+      if (col.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-gray-300 text-sm">📋<br>카드 없음</div>`;
+        return;
+      }
+      col.forEach(t => {
+        const div = document.createElement("div");
+        div.className = "card bg-gray-50 border rounded-lg p-2 text-sm cursor-pointer hover:border-teal-400";
+        div.draggable = true;
+        div.dataset.id = t.id;
+        div.innerHTML = `<p class="font-medium text-gray-800 leading-snug">${escHtml(t.title)}</p>
+          <p class="text-xs text-gray-400 mt-1">#${t.id} · ${t.assignee_id ? "@" + t.assignee_id : "⚠ 미할당"}</p>`;
+        div.addEventListener("dragstart", e => { dragId = t.id; div.classList.add("dragging"); });
+        div.addEventListener("dragend", () => div.classList.remove("dragging"));
+        div.addEventListener("click", () => openModal(t));
+        container.appendChild(div);
+      });
+    });
+  }
+
+  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // 드래그 앤 드롭
+  document.querySelectorAll(".col-drop").forEach(col => {
+    col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("over"); });
+    col.addEventListener("dragleave", () => col.classList.remove("over"));
+    col.addEventListener("drop", async e => {
+      e.preventDefault(); col.classList.remove("over");
+      const newStatus = col.dataset.status;
+      if (!dragId) return;
+      const task = tasks.find(t => t.id === dragId);
+      if (!task || task.status === newStatus) return;
+      task.status = newStatus; render();
+      await apiJSON("/tasks/" + dragId + "/status", { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+    });
+  });
+
+  // 인라인 추가
+  document.querySelectorAll(".add-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const col = btn.dataset.col;
+      document.getElementById("inline-" + col).classList.toggle("hidden");
+      document.querySelector("#inline-" + col + " .inline-input").focus();
+    });
+  });
+  document.querySelectorAll(".inline-input").forEach(inp => {
+    inp.addEventListener("keydown", async e => {
+      if (e.key === "Escape") { inp.value = ""; inp.closest("[id^=inline]").classList.add("hidden"); }
+      if (e.key === "Enter" && inp.value.trim()) {
+        const colDiv = inp.closest(".col-drop");
+        const status = colDiv.dataset.status;
+        const title = inp.value.trim();
+        inp.value = ""; colDiv.querySelector("[id^=inline]").classList.add("hidden");
+        await apiJSON("/teams/" + teamId + "/tasks", { method: "POST", body: JSON.stringify({ title, status }) });
+        loadTasks();
+      }
+    });
+  });
+
+  // 필터
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentFilter = btn.dataset.f;
+      document.querySelectorAll(".filter-btn").forEach(b => b.className = "filter-btn px-2 py-1 rounded " + (b.dataset.f === currentFilter ? "bg-teal-600 text-white" : "bg-gray-200 text-gray-600"));
+      loadTasks();
+    });
+  });
+
+  // 모달
+  function openModal(t) {
+    modalTask = t;
+    document.getElementById("modal").classList.remove("hidden");
+    document.getElementById("modalTitle").textContent = "#" + t.id + " " + t.title;
+    document.getElementById("modalTitleInput").value = t.title;
+    document.getElementById("modalMeta").textContent = "생성자: " + t.creator_id + " · " + new Date(t.created_at).toLocaleString("ko");
+    document.querySelectorAll(".status-btn").forEach(b => {
+      b.className = "status-btn px-2 py-1 rounded text-xs border " + (b.dataset.s === t.status ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600");
+    });
+    const isOwnerOrCreator = user.id === t.creator_id;
+    document.getElementById("modalDelete").classList.toggle("hidden", !isOwnerOrCreator);
+  }
+  document.getElementById("modalClose").addEventListener("click", () => document.getElementById("modal").classList.add("hidden"));
+  document.querySelectorAll(".status-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".status-btn").forEach(b => b.className = "status-btn px-2 py-1 rounded text-xs border bg-white text-gray-600");
+      btn.className = "status-btn px-2 py-1 rounded text-xs border bg-teal-600 text-white border-teal-600";
+    });
+  });
+  document.getElementById("modalSave").addEventListener("click", async () => {
+    const newTitle = document.getElementById("modalTitleInput").value.trim();
+    const newStatus = document.querySelector(".status-btn.bg-teal-600")?.dataset.s;
+    if (!newTitle) return;
+    await apiJSON("/tasks/" + modalTask.id, { method: "PUT", body: JSON.stringify({ title: newTitle }) });
+    if (newStatus && newStatus !== modalTask.status)
+      await apiJSON("/tasks/" + modalTask.id + "/status", { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+    document.getElementById("modal").classList.add("hidden");
+    loadTasks();
+  });
+  document.getElementById("modalDelete").addEventListener("click", async () => {
+    if (!confirm("이 카드를 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
+    await apiJSON("/tasks/" + modalTask.id, { method: "DELETE" });
+    document.getElementById("modal").classList.add("hidden");
+    loadTasks();
+  });
+
+  loadTeam(); loadTasks();
+</script>
+</body>
+</html>
