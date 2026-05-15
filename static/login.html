@@ -3,26 +3,37 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TaskFlow — 로그인</title>
+<script>
+  (function(){const t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');})();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
 </head>
-<body class="min-h-screen bg-gray-50 flex items-center justify-center">
-<div class="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
-  <div class="flex justify-center mb-4"><span class="bg-teal-600 text-white font-bold px-4 py-2 rounded-lg text-lg tracking-wide">TaskFlow</span></div>
-  <h2 class="text-lg font-semibold text-center mb-6">로그인</h2>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
+<button id="themeBtn" onclick="toggleTheme()"
+  class="fixed top-4 right-4 text-xl p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">🌙</button>
+<div class="w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-md p-8">
+  <div class="flex justify-center mb-4">
+    <span class="bg-teal-600 text-white font-bold px-4 py-2 rounded-lg text-lg tracking-wide">TaskFlow</span>
+  </div>
+  <h2 class="text-lg font-semibold text-center mb-6 text-gray-800 dark:text-gray-100">로그인</h2>
   <form id="loginForm" class="space-y-4">
     <input id="email" type="email" placeholder="이메일 입력" required
-      class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
+      class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder-gray-400 dark:placeholder-gray-500">
     <input id="password" type="password" placeholder="비밀번호" required
-      class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
-    <div id="error" class="hidden w-full p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg text-sm text-center"></div>
+      class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder-gray-400 dark:placeholder-gray-500">
+    <div id="error" class="hidden w-full p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg text-sm text-center"></div>
     <button id="submitBtn" type="submit"
       class="w-full bg-teal-600 text-white py-2 rounded-lg font-semibold hover:bg-teal-700 transition">
       로그인
     </button>
   </form>
-  <p class="text-center text-sm mt-4 text-gray-500">계정이 없으신가요? <a href="/signup.html" class="text-teal-600 hover:underline">회원가입</a></p>
+  <p class="text-center text-sm mt-4 text-gray-500 dark:text-gray-400">
+    계정이 없으신가요? <a href="/signup.html" class="text-teal-600 hover:underline">회원가입</a>
+  </p>
 </div>
 <script src="/js/api.js"></script>
+<script src="/js/theme.js"></script>
 <script>
   if (getToken()) location.href = "/team.html";
   document.getElementById("loginForm").addEventListener("submit", async e => {

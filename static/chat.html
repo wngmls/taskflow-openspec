@@ -3,10 +3,14 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TaskFlow — 채팅</title>
+<script>
+  (function(){const t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');})();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
 </head>
-<body class="min-h-screen bg-gray-100 flex flex-col">
-<header class="bg-white border-b px-4 py-3 flex items-center justify-between">
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col transition-colors">
+<header class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-4 py-3 flex items-center justify-between">
   <!-- 모바일: 뒤로가기 헤더 / 데스크탑: 탭 네비게이션 -->
   <div class="flex items-center gap-3">
     <button onclick="history.back()" class="md:hidden text-gray-600 text-lg mr-1">←</button>
@@ -20,7 +24,8 @@
   </nav>
   <div class="flex items-center gap-2">
     <span id="pollStatus" class="text-xs text-green-500 hidden md:block">● 5초마다 새로고침</span>
-    <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600 hidden md:block">로그아웃</button>
+    <button id="themeBtn" onclick="toggleTheme()" class="text-xl p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition hidden md:block">🌙</button>
+    <button id="logoutBtn" class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 hidden md:block">로그아웃</button>
   </div>
 </header>
 
@@ -29,11 +34,11 @@
   onscroll="checkPullRefresh(event)"></div>
 
 <!-- 입력 영역 -->
-<div id="inputArea" class="bg-white border-t p-3 max-w-2xl w-full mx-auto">
+<div id="inputArea" class="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-3 max-w-2xl w-full mx-auto">
   <div class="flex gap-2 items-end">
     <div class="flex-1">
       <textarea id="msgInput" rows="1" maxlength="1100" placeholder="메시지 입력 (1000자 이내)…"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400 transition"></textarea>
+        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder-gray-400 dark:placeholder-gray-500 transition"></textarea>
       <div class="flex items-center justify-between mt-0.5">
         <span id="overCount" class="hidden text-xs font-bold text-red-600"></span>
         <span id="charCount" class="text-xs text-gray-400 ml-auto">0 / 1,000</span>
@@ -47,6 +52,7 @@
 <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-4 py-2 rounded-full shadow z-50"></div>
 
 <script src="/js/api.js"></script>
+<script src="/js/theme.js"></script>
 <script>
   if (!getToken()) location.href = "/login.html";
   const user = getUser();
