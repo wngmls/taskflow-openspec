@@ -7,15 +7,15 @@
 </head>
 <body class="min-h-screen bg-gray-100">
 <header class="bg-white border-b px-4 py-3 flex items-center justify-between">
-  <div class="flex items-center gap-4">
-    <span class="text-teal-600 font-bold">TaskFlow</span>
-    <span id="teamName" class="text-sm text-gray-600 font-medium"></span>
-    <nav class="hidden md:flex gap-3 text-sm">
-      <a href="/kanban.html" class="text-gray-500 hover:text-gray-700">칸반</a>
-      <a href="/chat.html" class="text-gray-500 hover:text-gray-700">채팅</a>
-      <a href="/members.html" class="font-semibold text-teal-600 border-b-2 border-teal-600 pb-0.5">멤버</a>
-    </nav>
+  <div class="flex items-center gap-3">
+    <span class="bg-teal-600 text-white font-bold px-3 py-1 rounded-lg text-sm tracking-wide">TaskFlow</span>
+    <span id="teamName" class="text-sm text-gray-600 font-medium hidden md:block"></span>
   </div>
+  <nav class="flex gap-1">
+    <a href="/kanban.html"  class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">칸반</a>
+    <a href="/chat.html"    class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">채팅</a>
+    <a href="/members.html" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-teal-600 text-white">멤버</a>
+  </nav>
   <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600">로그아웃</button>
 </header>
 <main class="max-w-lg mx-auto mt-8 px-4">
