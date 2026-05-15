@@ -19,6 +19,14 @@
   <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600">로그아웃</button>
 </header>
 <main class="max-w-lg mx-auto mt-8 px-4">
+  <div class="bg-white rounded-2xl shadow p-6 mb-4">
+    <h2 class="font-bold text-gray-800 mb-3">초대코드</h2>
+    <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-3">
+      <span id="inviteCode" class="font-mono text-xl font-bold text-teal-700 tracking-widest"></span>
+      <button id="copyBtn" class="ml-auto text-sm text-teal-600 hover:text-teal-800 border border-teal-300 rounded px-2 py-1">📋 복사</button>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">이 코드를 팀원에게 공유하세요</p>
+  </div>
   <div class="bg-white rounded-2xl shadow p-6">
     <h2 class="font-bold text-gray-800 mb-4">팀 멤버 <span id="memberCount" class="text-sm text-gray-400"></span></h2>
     <div id="memberList" class="space-y-3"></div>
@@ -40,7 +48,15 @@
       apiJSON("/teams/" + teamId),
       apiJSON("/teams/" + teamId + "/members")
     ]);
-    if (team) document.getElementById("teamName").textContent = team.name + " 팀";
+    if (team) {
+      document.getElementById("teamName").textContent = team.name + " 팀";
+      document.getElementById("inviteCode").textContent = team.invite_code;
+      document.getElementById("copyBtn").addEventListener("click", () => {
+        navigator.clipboard.writeText(team.invite_code);
+        document.getElementById("copyBtn").textContent = "✓ 복사됨";
+        setTimeout(() => document.getElementById("copyBtn").textContent = "📋 복사", 2000);
+      });
+    }
     if (members) {
       document.getElementById("memberCount").textContent = "(" + members.length + ")";
       document.getElementById("memberList").innerHTML = members.map(m => `
