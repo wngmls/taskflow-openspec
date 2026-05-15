@@ -9,18 +9,18 @@
 <div class="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
   <div class="flex justify-center mb-4"><span class="bg-teal-600 text-white font-bold px-4 py-2 rounded-lg text-lg tracking-wide">TaskFlow</span></div>
   <h2 class="text-lg font-semibold text-center mb-6">회원가입</h2>
-  <div id="error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"></div>
   <form id="signupForm" class="space-y-4">
     <div>
       <input id="email" type="email" placeholder="이메일 입력" required
-        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition">
       <p id="emailErr" class="hidden text-xs text-red-500 mt-1">⚠ 올바른 이메일 형식이 아닙니다</p>
     </div>
     <div>
       <input id="password" type="password" placeholder="비밀번호 (8자 이상)" required
-        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition">
       <p id="pwErr" class="hidden text-xs text-red-500 mt-1">⚠ 8자 이상 입력해주세요</p>
     </div>
+    <div id="apiError" class="hidden w-full p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg text-sm text-center"></div>
     <button id="submitBtn" type="submit"
       class="w-full bg-teal-600 text-white py-2 rounded-lg font-semibold hover:bg-teal-700 transition">
       가입하기
@@ -31,30 +31,46 @@
 <script src="/js/api.js"></script>
 <script>
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function setFieldError(inputId, errId, show) {
+    const input = document.getElementById(inputId);
+    const err = document.getElementById(errId);
+    err.classList.toggle("hidden", !show);
+    input.classList.toggle("border-red-400", show);
+    input.classList.toggle("border-gray-300", !show);
+  }
+
   document.getElementById("email").addEventListener("blur", () => {
     const v = document.getElementById("email").value;
-    document.getElementById("emailErr").classList.toggle("hidden", EMAIL_RE.test(v) || !v);
+    if (v) setFieldError("email", "emailErr", !EMAIL_RE.test(v));
   });
   document.getElementById("password").addEventListener("input", () => {
     const v = document.getElementById("password").value;
-    document.getElementById("pwErr").classList.toggle("hidden", v.length >= 8 || !v);
+    if (v) setFieldError("password", "pwErr", v.length < 8);
   });
+
   document.getElementById("signupForm").addEventListener("submit", async e => {
     e.preventDefault();
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const errEl = document.getElementById("error");
+    const apiErrEl = document.getElementById("apiError");
     const btn = document.getElementById("submitBtn");
-    if (!EMAIL_RE.test(email)) { document.getElementById("emailErr").classList.remove("hidden"); return; }
-    if (password.length < 8) { document.getElementById("pwErr").classList.remove("hidden"); return; }
-    btn.textContent = "처리 중…"; btn.disabled = true; errEl.classList.add("hidden");
+    apiErrEl.classList.add("hidden");
+
+    let valid = true;
+    if (!EMAIL_RE.test(email)) { setFieldError("email", "emailErr", true); valid = false; }
+    if (password.length < 8) { setFieldError("password", "pwErr", true); valid = false; }
+    if (!valid) return;
+
+    btn.textContent = "처리 중…"; btn.disabled = true;
     try {
       const data = await apiJSON("/auth/signup", { method: "POST", body: JSON.stringify({ email, password }) });
       if (!data) return;
       setToken(data.token); setUser(data.user);
       location.href = "/team.html";
     } catch (err) {
-      errEl.textContent = err.message || "오류가 발생했습니다"; errEl.classList.remove("hidden");
+      apiErrEl.textContent = "✕ " + (err.message || "오류가 발생했습니다");
+      apiErrEl.classList.remove("hidden");
       btn.textContent = "가입하기"; btn.disabled = false;
     }
   });

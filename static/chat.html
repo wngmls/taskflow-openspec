@@ -7,46 +7,128 @@
 </head>
 <body class="min-h-screen bg-gray-100 flex flex-col">
 <header class="bg-white border-b px-4 py-3 flex items-center justify-between">
+  <!-- 모바일: 뒤로가기 헤더 / 데스크탑: 탭 네비게이션 -->
   <div class="flex items-center gap-3">
-    <span class="bg-teal-600 text-white font-bold px-3 py-1 rounded-lg text-sm tracking-wide">TaskFlow</span>
-    <span id="teamName" class="text-sm text-gray-600 font-medium hidden md:block"></span>
+    <button onclick="history.back()" class="md:hidden text-gray-600 text-lg mr-1">←</button>
+    <span class="bg-teal-600 text-white font-bold px-3 py-1 rounded-lg text-sm tracking-wide hidden md:inline">TaskFlow</span>
+    <span id="teamName" class="text-sm text-gray-600 font-medium"></span>
   </div>
-  <nav class="flex gap-1">
+  <nav class="hidden md:flex gap-1">
     <a href="/kanban.html"  class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">칸반</a>
     <a href="/chat.html"    class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-teal-600 text-white">채팅</a>
     <a href="/members.html" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">멤버</a>
   </nav>
   <div class="flex items-center gap-2">
-    <span id="pollStatus" class="text-xs text-green-500">● 5초마다 새로고침</span>
+    <span id="pollStatus" class="text-xs text-green-500 hidden md:block">● 5초마다 새로고침</span>
     <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600 hidden md:block">로그아웃</button>
   </div>
 </header>
-<div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 max-w-2xl w-full mx-auto"></div>
-<div class="bg-white border-t p-3 max-w-2xl w-full mx-auto">
+
+<!-- 메시지 영역 -->
+<div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 max-w-2xl w-full mx-auto"
+  onscroll="checkPullRefresh(event)"></div>
+
+<!-- 입력 영역 -->
+<div id="inputArea" class="bg-white border-t p-3 max-w-2xl w-full mx-auto">
   <div class="flex gap-2 items-end">
     <div class="flex-1">
       <textarea id="msgInput" rows="1" maxlength="1100" placeholder="메시지 입력 (1000자 이내)…"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"></textarea>
-      <p id="charCount" class="text-xs text-right text-gray-400 mt-0.5">0 / 1000</p>
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400 transition"></textarea>
+      <div class="flex items-center justify-between mt-0.5">
+        <span id="overCount" class="hidden text-xs font-bold text-red-600"></span>
+        <span id="charCount" class="text-xs text-gray-400 ml-auto">0 / 1,000</span>
+      </div>
     </div>
-    <button id="sendBtn" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 self-end">전송</button>
+    <button id="sendBtn" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 self-end transition">전송</button>
   </div>
 </div>
+
+<!-- 토스트 -->
+<div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-4 py-2 rounded-full shadow z-50"></div>
+
 <script src="/js/api.js"></script>
 <script>
-  if (!getToken()) { location.href = "/login.html"; }
+  if (!getToken()) location.href = "/login.html";
   const user = getUser();
-  if (!user || !user.team_id) { location.href = "/team.html"; }
+  if (!user || !user.team_id) location.href = "/team.html";
   const teamId = user.team_id;
-  let lastSince = null, pollTimer = null, isFocused = false;
 
-  document.getElementById("logoutBtn").addEventListener("click", async () => {
-    await apiFetch("/auth/logout", { method: "POST" }); removeToken(); removeUser(); location.href = "/login.html";
+  let lastSince = null, pollTimer = null, isFocused = false;
+  let isOffline = false, retryCount = 0, retryTimer = null;
+  const backoffSeq = [5000, 10000, 20000, 40000, 60000];
+  let disconnectTime = null, disconnectMarkerShown = false;
+
+  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+    await apiFetch("/auth/logout", {method:"POST"}); removeToken(); removeUser(); location.href="/login.html";
   });
 
   async function loadTeam() {
     const t = await apiJSON("/teams/" + teamId);
-    if (t) document.getElementById("teamName").textContent = t.name + " 팀 · 채팅";
+    if (t) document.getElementById("teamName").textContent = t.name + " · 채팅";
+  }
+
+  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function scrollBottom() { const el=document.getElementById("messages"); el.scrollTop=el.scrollHeight; }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.remove("hidden");
+    setTimeout(() => t.classList.add("hidden"), 2500);
+  }
+
+  function setOnline() {
+    if (!isOffline) return;
+    isOffline = false; retryCount = 0;
+    clearTimeout(retryTimer);
+    disconnectMarkerShown = false;
+    disconnectTime = null;
+    document.getElementById("pollStatus").textContent = "● 5초마다 새로고침";
+    document.getElementById("pollStatus").className = "text-xs text-green-500 hidden md:block";
+    document.getElementById("msgInput").placeholder = "메시지 입력 (1000자 이내)…";
+    showToast("연결되었습니다");
+    startPoll();
+  }
+
+  function setOffline() {
+    if (isOffline) return;
+    isOffline = true;
+    disconnectTime = new Date();
+    document.getElementById("pollStatus").textContent = "⚠ 연결 끊김 · 재시도 중";
+    document.getElementById("pollStatus").className = "text-xs text-red-500 hidden md:block";
+    document.getElementById("msgInput").placeholder = "오프라인 — 연결 복구 후 전송됩니다";
+    // 타임라인 구분선 삽입
+    if (!disconnectMarkerShown) {
+      disconnectMarkerShown = true;
+      const sep = document.createElement("div");
+      const timeStr = disconnectTime.toLocaleTimeString("ko", {hour:"2-digit", minute:"2-digit"});
+      sep.className = "text-center text-xs text-red-400 py-1";
+      sep.innerHTML = `<span class="border-t border-red-200 inline-block w-16 mr-2 align-middle"></span>--- ${timeStr}부터 연결 끊김 ---<span class="border-t border-red-200 inline-block w-16 ml-2 align-middle"></span>`;
+      document.getElementById("messages").appendChild(sep);
+    }
+    scheduleRetry();
+  }
+
+  function scheduleRetry() {
+    if (!isOffline) return;
+    const delay = backoffSeq[Math.min(retryCount, backoffSeq.length - 1)];
+    const secs = Math.round(delay / 1000);
+    // 재시도 카운터 표시
+    const container = document.getElementById("messages");
+    let retryEl = document.getElementById("retryCounter");
+    if (!retryEl) {
+      retryEl = document.createElement("div");
+      retryEl.id = "retryCounter";
+      retryEl.className = "text-center text-xs text-gray-400 py-1";
+      container.appendChild(retryEl);
+    }
+    retryEl.textContent = `🔄 ${secs}초 후 재연결 시도 중... (시도 횟수: ${retryCount + 1}/∞)`;
+    retryTimer = setTimeout(async () => {
+      retryCount++;
+      try {
+        await fetchMessages(false);
+        setOnline();
+      } catch { scheduleRetry(); }
+    }, delay);
   }
 
   function renderMsg(m) {
@@ -54,29 +136,26 @@
     const el = document.createElement("div");
     el.className = "flex " + (isMine ? "justify-end" : "justify-start");
     el.dataset.id = m.id;
-    const time = new Date(m.created_at).toLocaleTimeString("ko", { hour: "2-digit", minute: "2-digit" });
+    const time = new Date(m.created_at).toLocaleTimeString("ko", {hour:"2-digit", minute:"2-digit"});
     el.innerHTML = `<div class="max-w-xs">
-      <p class="text-xs text-gray-400 mb-0.5 ${isMine ? "text-right" : ""}">${isMine ? "나" : m.user_email.split("@")[0]} · ${time}</p>
+      <p class="text-xs text-gray-400 mb-0.5 ${isMine?"text-right":""}">${isMine?"나":m.user_email.split("@")[0]} · ${time}</p>
       <div class="relative group">
-        <p class="${isMine ? "bg-teal-600 text-white" : "bg-white border text-gray-800"} rounded-xl px-3 py-2 text-sm whitespace-pre-wrap">${escHtml(m.content)}</p>
-        ${isMine ? `<button data-id="${m.id}" class="del-btn hidden group-hover:block absolute top-1 right-1 text-xs text-red-300 hover:text-red-500">🗑</button>` : ""}
+        <p class="${isMine?"bg-teal-600 text-white":"bg-white border text-gray-800"} rounded-xl px-3 py-2 text-sm whitespace-pre-wrap">${escHtml(m.content)}</p>
+        ${isMine?`<button data-id="${m.id}" class="del-btn hidden group-hover:block absolute top-1 right-1 text-xs text-red-300 hover:text-red-500">🗑</button>`:""}
       </div>
     </div>`;
     return el;
   }
 
-  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
-  function scrollBottom() {
-    const el = document.getElementById("messages");
-    el.scrollTop = el.scrollHeight;
-  }
-
-  async function fetchMessages(init = false) {
+  async function fetchMessages(init=false) {
     const q = (!init && lastSince) ? "?since=" + encodeURIComponent(lastSince) : "";
-    const data = await apiJSON("/teams/" + teamId + "/messages" + q);
-    if (!data) return;
+    const res = await apiFetch("/teams/" + teamId + "/messages" + q);
+    if (!res) return;
+    if (!res.ok) throw new Error("fetch failed");
+    const data = await res.json();
     const container = document.getElementById("messages");
+    // 재시도 카운터 제거
+    document.getElementById("retryCounter")?.remove();
     if (init) {
       container.innerHTML = "";
       if (data.length === 0) {
@@ -85,39 +164,68 @@
       }
     }
     data.forEach(m => {
-      const existing = container.querySelector("[data-id='" + m.id + "']");
-      if (!existing) {
-        const ghost = container.querySelector(".text-gray-300");
-        if (ghost) ghost.remove();
+      if (!container.querySelector("[data-id='" + m.id + "']")) {
+        container.querySelector(".text-gray-300")?.remove();
         container.appendChild(renderMsg(m));
       }
     });
-    if (data.length > 0) lastSince = data[data.length - 1].created_at;
+    if (data.length > 0) lastSince = data[data.length-1].created_at;
     scrollBottom();
-    // 삭제 버튼 이벤트
     container.querySelectorAll(".del-btn").forEach(btn => {
       btn.onclick = async () => {
-        const id = btn.dataset.id;
-        await apiJSON("/messages/" + id, { method: "DELETE" });
-        container.querySelector("[data-id='" + id + "']")?.remove();
+        await apiJSON("/messages/" + btn.dataset.id, {method:"DELETE"});
+        container.querySelector("[data-id='" + btn.dataset.id + "']")?.remove();
       };
     });
   }
 
   function startPoll() {
     clearInterval(pollTimer);
-    const interval = isFocused ? 2000 : 5000;
-    pollTimer = setInterval(() => fetchMessages(false), interval);
+    pollTimer = setInterval(async () => {
+      try { await fetchMessages(false); if (isOffline) setOnline(); }
+      catch { setOffline(); }
+    }, isFocused ? 2000 : 5000);
+  }
+
+  // Pull-to-refresh
+  let startY = 0;
+  document.getElementById("messages").addEventListener("touchstart", e => { startY = e.touches[0].clientY; }, {passive:true});
+  document.getElementById("messages").addEventListener("touchend", e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 60 && document.getElementById("messages").scrollTop === 0) {
+      lastSince = null; fetchMessages(true);
+      showToast("새로고침 중...");
+    }
+  }, {passive:true});
+
+  // visualViewport (모바일 키보드 대응)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      const inputArea = document.getElementById("inputArea");
+      const offset = window.innerHeight - window.visualViewport.height;
+      inputArea.style.transform = offset > 50 ? `translateY(-${offset}px)` : "";
+    });
   }
 
   document.getElementById("msgInput").addEventListener("focus", () => { isFocused = true; startPoll(); });
-  document.getElementById("msgInput").addEventListener("blur", () => { isFocused = false; startPoll(); });
+  document.getElementById("msgInput").addEventListener("blur",  () => { isFocused = false; startPoll(); });
+
+  // 1000자 카운터
   document.getElementById("msgInput").addEventListener("input", () => {
     const len = document.getElementById("msgInput").value.length;
     const counter = document.getElementById("charCount");
-    counter.textContent = len + " / 1000";
-    counter.className = "text-xs text-right mt-0.5 " + (len > 1000 ? "text-red-500 font-semibold" : "text-gray-400");
-    document.getElementById("sendBtn").disabled = len > 1000;
+    const overEl  = document.getElementById("overCount");
+    const btn     = document.getElementById("sendBtn");
+    const inp     = document.getElementById("msgInput");
+    const over    = len > 1000;
+    counter.textContent = len.toLocaleString() + " / 1,000";
+    counter.className   = "text-xs " + (over ? "text-red-600 font-bold" : "text-gray-400") + " ml-auto";
+    overEl.textContent  = over ? (len - 1000) + "자 초과" : "";
+    overEl.classList.toggle("hidden", !over);
+    inp.classList.toggle("border-red-400", over);
+    inp.classList.toggle("border-gray-300", !over);
+    btn.disabled = over;
+    btn.className = "px-4 py-2 rounded-lg text-sm font-semibold self-end transition " + (over ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-600 text-white hover:bg-teal-700");
   });
 
   document.getElementById("sendBtn").addEventListener("click", sendMsg);
@@ -127,17 +235,15 @@
 
   async function sendMsg() {
     const content = document.getElementById("msgInput").value.trim();
-    if (!content || content.length > 1000) return;
+    if (!content || content.length > 1000 || isOffline) return;
     document.getElementById("msgInput").value = "";
-    document.getElementById("charCount").textContent = "0 / 1000";
-    try {
-      await apiJSON("/teams/" + teamId + "/messages", { method: "POST", body: JSON.stringify({ content }) });
-      fetchMessages(false);
-    } catch (err) { alert(err.message || "전송 실패"); }
+    document.getElementById("charCount").textContent = "0 / 1,000";
+    try { await apiJSON("/teams/" + teamId + "/messages", {method:"POST", body:JSON.stringify({content})}); fetchMessages(false); }
+    catch (err) { alert(err.message || "전송 실패"); }
   }
 
   loadTeam();
-  fetchMessages(true).then(startPoll);
+  fetchMessages(true).then(() => startPoll()).catch(() => { setOffline(); });
 </script>
 </body>
 </html>

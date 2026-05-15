@@ -6,10 +6,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   .card{cursor:grab;transition:opacity .15s}.card.dragging{opacity:.4}
-  .col-drop{transition:background .15s}
-  .col-TODO.over{background:#fef9c3}
-  .col-DOING.over{background:#dbeafe}
-  .col-DONE.over{background:#dcfce7}
+  .col-TODO.over{background:#fef3c7}.col-DOING.over{background:#dbeafe}.col-DONE.over{background:#dcfce7}
 </style>
 </head>
 <body class="min-h-screen bg-gray-100">
@@ -18,28 +15,36 @@
     <span class="bg-teal-600 text-white font-bold px-3 py-1 rounded-lg text-sm tracking-wide">TaskFlow</span>
     <span id="teamName" class="text-sm text-gray-600 font-medium hidden md:block"></span>
   </div>
-  <!-- 중앙 탭 -->
   <nav class="flex gap-1">
-    <a href="/kanban.html" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-teal-600 text-white">칸반</a>
-    <a href="/chat.html"   class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">채팅</a>
+    <a href="/kanban.html"  class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-teal-600 text-white">칸반</a>
+    <a href="/chat.html"    class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">채팅</a>
     <a href="/members.html" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">멤버</a>
   </nav>
-  <div class="flex items-center gap-3">
+  <div class="flex items-center gap-2">
     <span id="userEmailDisplay" class="text-sm text-gray-500 hidden md:block"></span>
     <button id="logoutBtn" class="text-xs text-gray-400 hover:text-gray-600 hidden md:block">로그아웃</button>
     <button id="menuBtn" class="md:hidden text-gray-600 text-lg">☰</button>
   </div>
 </header>
+
+<!-- 모바일 컬럼 탭 인디케이터 -->
+<div id="mobileTabs" class="md:hidden flex border-b bg-white">
+  <button data-col="TODO"  class="mobile-tab flex-1 py-2 text-sm font-bold text-amber-600 border-b-2 border-amber-500">TODO</button>
+  <button data-col="DOING" class="mobile-tab flex-1 py-2 text-sm text-gray-500">DOING</button>
+  <button data-col="DONE"  class="mobile-tab flex-1 py-2 text-sm text-gray-500">DONE</button>
+</div>
+
 <!-- 모바일 메뉴 -->
 <div id="mobileMenu" class="hidden fixed inset-0 z-50 bg-black bg-opacity-30" onclick="this.classList.add('hidden')">
   <div class="absolute right-0 top-0 h-full w-64 bg-white shadow-xl p-6 space-y-4" onclick="event.stopPropagation()">
     <p id="mobileUser" class="text-sm text-gray-500 border-b pb-3"></p>
-    <a href="/kanban.html" class="block py-2 text-teal-600 font-semibold">📋 칸반</a>
-    <a href="/chat.html"   class="block py-2 text-gray-700">💬 채팅</a>
+    <a href="/kanban.html"  class="block py-2 text-teal-600 font-semibold">📋 칸반</a>
+    <a href="/chat.html"    class="block py-2 text-gray-700">💬 채팅</a>
     <a href="/members.html" class="block py-2 text-gray-700">👥 팀 멤버</a>
     <button id="mobileLogout" class="block py-2 text-gray-700">🚪 로그아웃</button>
   </div>
 </div>
+
 <!-- 필터 바 -->
 <div class="bg-white border-b px-4 py-2 flex items-center justify-between">
   <div class="flex gap-1 text-sm">
@@ -49,11 +54,11 @@
   </div>
   <span class="text-xs text-gray-400">정렬: 최근 생성순 ▼</span>
 </div>
+
 <!-- 칸반 보드 -->
 <main class="p-4 overflow-x-auto">
   <div class="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
-    <!-- TODO 컬럼 — 노란 배경 -->
-    <div id="col-TODO" data-status="TODO" class="col-drop col-TODO w-72 md:w-auto bg-amber-50 rounded-xl p-3">
+    <div id="col-TODO"  data-status="TODO"  class="col-drop col-TODO  w-72 md:w-auto bg-amber-50 rounded-xl p-3 transition">
       <div class="flex justify-between items-center mb-3">
         <h2 class="font-bold text-amber-700">TODO · <span id="cnt-TODO">0</span></h2>
         <button data-col="TODO" class="add-btn text-amber-600 font-bold text-xl leading-none hover:text-amber-800">+</button>
@@ -62,17 +67,15 @@
         <input class="inline-input w-full text-sm focus:outline-none" placeholder="태스크 제목...">
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-400">담당자:</span>
-          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-400">
+          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none">
             <option value="">미할당</option>
-            <option value="me">@me</option>
           </select>
         </div>
         <p class="text-xs text-gray-400">Enter: 저장 · Esc: 취소</p>
       </div>
       <div id="cards-TODO" class="space-y-2 min-h-8"></div>
     </div>
-    <!-- DOING 컬럼 — 파란 배경 -->
-    <div id="col-DOING" data-status="DOING" class="col-drop col-DOING w-72 md:w-auto bg-blue-50 rounded-xl p-3">
+    <div id="col-DOING" data-status="DOING" class="col-drop col-DOING w-72 md:w-auto bg-blue-50 rounded-xl p-3 transition">
       <div class="flex justify-between items-center mb-3">
         <h2 class="font-bold text-blue-700">DOING · <span id="cnt-DOING">0</span></h2>
         <button data-col="DOING" class="add-btn text-blue-600 font-bold text-xl leading-none hover:text-blue-800">+</button>
@@ -81,17 +84,15 @@
         <input class="inline-input w-full text-sm focus:outline-none" placeholder="태스크 제목...">
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-400">담당자:</span>
-          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400">
+          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none">
             <option value="">미할당</option>
-            <option value="me">@me</option>
           </select>
         </div>
         <p class="text-xs text-gray-400">Enter: 저장 · Esc: 취소</p>
       </div>
       <div id="cards-DOING" class="space-y-2 min-h-8"></div>
     </div>
-    <!-- DONE 컬럼 — 초록 배경 -->
-    <div id="col-DONE" data-status="DONE" class="col-drop col-DONE w-72 md:w-auto bg-green-50 rounded-xl p-3">
+    <div id="col-DONE"  data-status="DONE"  class="col-drop col-DONE  w-72 md:w-auto bg-green-50 rounded-xl p-3 transition">
       <div class="flex justify-between items-center mb-3">
         <h2 class="font-bold text-green-700">DONE · <span id="cnt-DONE">0</span></h2>
         <button data-col="DONE" class="add-btn text-green-600 font-bold text-xl leading-none hover:text-green-800">+</button>
@@ -100,9 +101,8 @@
         <input class="inline-input w-full text-sm focus:outline-none" placeholder="태스크 제목...">
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-400">담당자:</span>
-          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-green-400">
+          <select class="assignee-select text-xs border rounded px-1 py-0.5 text-gray-600 focus:outline-none">
             <option value="">미할당</option>
-            <option value="me">@me</option>
           </select>
         </div>
         <p class="text-xs text-gray-400">Enter: 저장 · Esc: 취소</p>
@@ -111,62 +111,124 @@
     </div>
   </div>
 </main>
-<!-- 카드 상세 모달 -->
+
+<!-- 모바일 FAB -->
+<button id="fabBtn" class="md:hidden fixed bottom-6 right-6 z-30 w-14 h-14 bg-teal-600 text-white text-2xl rounded-full shadow-lg flex items-center justify-center hover:bg-teal-700">+</button>
+
+<!-- 카드 상세 모달 (좌우 분리 레이아웃) -->
 <div id="modal" class="hidden fixed inset-0 z-40 bg-black bg-opacity-40 flex items-center justify-center px-4">
-  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
-    <div class="flex justify-between items-start">
-      <h3 id="modalTitle" class="font-bold text-gray-800 text-lg"></h3>
-      <button id="modalClose" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+    <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b">
+      <div class="flex items-center gap-2">
+        <span id="modalId" class="text-sm font-mono text-gray-400"></span>
+        <h3 id="modalTitle" class="font-bold text-gray-800 text-lg"></h3>
+      </div>
+      <button id="modalClose" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
     </div>
-    <div class="space-y-3 text-sm">
-      <div><label class="text-xs text-gray-500 uppercase tracking-wide">제목</label>
-        <input id="modalTitleInput" class="w-full border rounded-lg px-3 py-1.5 mt-1 focus:outline-none focus:ring-2 focus:ring-teal-400"></div>
-      <div><label class="text-xs text-gray-500 uppercase tracking-wide">상태</label>
-        <div class="flex gap-2 mt-1">
-          <button data-s="TODO"  class="status-btn px-3 py-1 rounded-lg text-xs border font-semibold">TODO</button>
-          <button data-s="DOING" class="status-btn px-3 py-1 rounded-lg text-xs border font-semibold">DOING</button>
-          <button data-s="DONE"  class="status-btn px-3 py-1 rounded-lg text-xs border font-semibold">DONE</button>
+    <div class="flex gap-0">
+      <!-- 좌측: 메타 + 상태 -->
+      <div class="flex-1 px-6 py-4 space-y-4">
+        <div>
+          <label class="text-xs text-gray-500 uppercase tracking-wide">상태</label>
+          <div class="flex gap-2 mt-1.5">
+            <button data-s="TODO"  class="status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold">TODO</button>
+            <button data-s="DOING" class="status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold">DOING</button>
+            <button data-s="DONE"  class="status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold">DONE</button>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flex gap-3"><span class="text-gray-400 w-16">담당자</span><span id="modalAssignee" class="text-teal-600 font-medium"></span></div>
+          <div class="flex gap-3"><span class="text-gray-400 w-16">생성자</span><span id="modalCreator" class="text-gray-700"></span></div>
+          <div class="flex gap-3"><span class="text-gray-400 w-16">생성 시각</span><span id="modalCreatedAt" class="text-gray-700"></span></div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 uppercase tracking-wide">제목 수정</label>
+          <input id="modalTitleInput" class="w-full border rounded-lg px-3 py-1.5 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
         </div>
       </div>
-      <p id="modalMeta" class="text-xs text-gray-400"></p>
-    </div>
-    <div class="flex justify-between pt-2">
-      <button id="modalDelete" class="text-red-500 text-sm hover:text-red-700">🗑 삭제</button>
-      <button id="modalSave" class="bg-teal-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-teal-700">저장</button>
+      <!-- 우측: 액션 -->
+      <div class="w-36 px-4 py-4 border-l flex flex-col gap-2">
+        <button id="modalSave" class="w-full bg-teal-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-teal-700">저장</button>
+        <button id="modalReassign" class="w-full border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50">다른 담당자 지정</button>
+        <button id="modalDelete" class="hidden w-full border border-red-400 text-red-600 py-2 rounded-lg text-sm font-semibold hover:bg-red-50">🗑 삭제</button>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- 모바일 상태 변경 바텀시트 -->
+<div id="bottomSheet" class="hidden fixed inset-0 z-50 bg-black bg-opacity-30 flex items-end" onclick="this.classList.add('hidden')">
+  <div class="w-full bg-white rounded-t-2xl p-4 space-y-2" onclick="event.stopPropagation()">
+    <p class="text-sm text-gray-500 text-center mb-3">상태 변경</p>
+    <button data-s="TODO"  class="sheet-btn w-full py-3 bg-amber-50 text-amber-700 font-semibold rounded-xl">TODO</button>
+    <button data-s="DOING" class="sheet-btn w-full py-3 bg-blue-50 text-blue-700 font-semibold rounded-xl">DOING</button>
+    <button data-s="DONE"  class="sheet-btn w-full py-3 bg-green-50 text-green-700 font-semibold rounded-xl">DONE</button>
+    <button onclick="document.getElementById('bottomSheet').classList.add('hidden')" class="w-full py-3 text-gray-500">취소</button>
+  </div>
+</div>
+
 <script src="/js/api.js"></script>
 <script>
   if (!getToken()) location.href = "/login.html";
   const user = getUser();
   if (!user || !user.team_id) location.href = "/team.html";
   const teamId = user.team_id;
-  let tasks = [], members = [], currentFilter = "", dragId = null, modalTask = null;
+  let tasks = [], members = [], currentFilter = "", dragId = null, modalTask = null, activeCol = "TODO", longPressTask = null;
 
   document.getElementById("userEmailDisplay").textContent = user?.email || "";
   document.getElementById("menuBtn").addEventListener("click", () => document.getElementById("mobileMenu").classList.toggle("hidden"));
   document.getElementById("mobileUser").textContent = user?.email || "";
   [document.getElementById("logoutBtn"), document.getElementById("mobileLogout")].forEach(btn =>
-    btn?.addEventListener("click", async () => {
-      await apiFetch("/auth/logout", { method: "POST" }); removeToken(); removeUser(); location.href = "/login.html";
-    })
+    btn?.addEventListener("click", async () => { await apiFetch("/auth/logout", {method:"POST"}); removeToken(); removeUser(); location.href="/login.html"; })
   );
+
+  // 모바일 탭
+  document.querySelectorAll(".mobile-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      activeCol = tab.dataset.col;
+      document.querySelectorAll(".mobile-tab").forEach(t => {
+        const isActive = t.dataset.col === activeCol;
+        const colors = {TODO:"text-amber-600 border-amber-500", DOING:"text-blue-600 border-blue-500", DONE:"text-green-600 border-green-500"};
+        t.className = "mobile-tab flex-1 py-2 text-sm " + (isActive ? "font-bold border-b-2 " + colors[t.dataset.col] : "text-gray-500");
+      });
+      // 모바일에서 해당 컬럼만 보이기
+      document.querySelectorAll(".col-drop").forEach(col => {
+        col.style.display = window.innerWidth < 768 ? (col.dataset.status === activeCol ? "" : "none") : "";
+      });
+    });
+  });
+
+  // 모바일 초기 표시
+  function updateMobileView() {
+    if (window.innerWidth < 768) {
+      document.querySelectorAll(".col-drop").forEach(col => {
+        col.style.display = col.dataset.status === activeCol ? "" : "none";
+      });
+    } else {
+      document.querySelectorAll(".col-drop").forEach(col => col.style.display = "");
+    }
+  }
+  window.addEventListener("resize", updateMobileView);
+
+  // FAB
+  document.getElementById("fabBtn").addEventListener("click", () => {
+    const inlineDiv = document.getElementById("inline-" + activeCol);
+    inlineDiv.classList.toggle("hidden");
+    inlineDiv.querySelector(".inline-input").focus();
+  });
 
   async function loadTeam() {
     const [t, m] = await Promise.all([apiJSON("/teams/" + teamId), apiJSON("/teams/" + teamId + "/members")]);
     if (t) document.getElementById("teamName").textContent = t.name + " 팀";
     if (m) {
       members = m;
-      // assignee 드롭다운 업데이트
       document.querySelectorAll(".assignee-select").forEach(sel => {
-        const cur = sel.value;
         sel.innerHTML = '<option value="">미할당</option>';
         m.forEach(mb => {
           const opt = document.createElement("option");
           opt.value = mb.id;
           opt.textContent = mb.id === user.id ? "@me (" + mb.email.split("@")[0] + ")" : "@" + mb.email.split("@")[0];
-          if (mb.id === user.id) opt.selected = true; // 기본 @me
+          if (mb.id === user.id) opt.selected = true;
           sel.appendChild(opt);
         });
       });
@@ -180,7 +242,12 @@
     tasks = data; render();
   }
 
-  const colColors = { TODO: "bg-white border", DOING: "bg-white border", DONE: "bg-white border" };
+  function getMemberLabel(id) {
+    if (!id) return "⚠ 미할당";
+    if (id === user.id) return "@me";
+    const m = members.find(mb => mb.id === id);
+    return "@" + (m ? m.email.split("@")[0] : id);
+  }
 
   function render() {
     ["TODO", "DOING", "DONE"].forEach(s => {
@@ -189,29 +256,64 @@
       const container = document.getElementById("cards-" + s);
       container.innerHTML = "";
       if (col.length === 0) {
-        container.innerHTML = `<div class="text-center py-6 text-gray-300 text-sm">📋<br>카드 없음</div>`;
+        // 빈 칸반 empty state
+        const emptyDiv = document.createElement("div");
+        emptyDiv.className = "text-center py-6 text-gray-400 text-sm";
+        if (s === "TODO") {
+          emptyDiv.innerHTML = `<div class="text-3xl mb-2">📋</div>
+            <p class="text-gray-400 mb-2">카드 없음</p>
+            <button class="text-teal-600 hover:text-teal-800 font-semibold text-sm underline first-cta">+ 첫 태스크 만들기</button>`;
+          emptyDiv.querySelector(".first-cta").addEventListener("click", () => {
+            document.getElementById("inline-TODO").classList.remove("hidden");
+            document.getElementById("inline-TODO").querySelector(".inline-input").focus();
+          });
+        } else {
+          emptyDiv.innerHTML = `<div class="text-3xl mb-2">📋</div><p class="text-gray-400 mb-1">카드 없음</p><p class="text-xs text-gray-300">드래그로 이동</p>`;
+        }
+        container.appendChild(emptyDiv);
         return;
       }
       col.forEach(t => {
-        const assigneeName = t.assignee_id
-          ? (t.assignee_id === user.id ? "@me" : "@" + (members.find(m => m.id === t.assignee_id)?.email.split("@")[0] || t.assignee_id))
-          : "⚠ 미할당";
+        const label = getMemberLabel(t.assignee_id);
         const div = document.createElement("div");
-        div.className = "card bg-white border border-gray-200 rounded-lg p-3 text-sm cursor-pointer hover:border-teal-400 hover:shadow-sm";
+        div.className = "card bg-white border border-gray-200 rounded-lg p-3 text-sm cursor-pointer hover:border-teal-400 hover:shadow-sm select-none";
         div.draggable = true;
         div.dataset.id = t.id;
         div.innerHTML = `<p class="font-medium text-gray-800 leading-snug">${escHtml(t.title)}</p>
-          <p class="text-xs text-gray-400 mt-1">#${t.id} · <span class="${t.assignee_id ? "text-teal-600" : "text-orange-400"}">${assigneeName}</span></p>`;
+          <p class="text-xs text-gray-400 mt-1">#${t.id} · <span class="${t.assignee_id ? "text-teal-600" : "text-orange-400"}">${label}</span></p>`;
+        // 데스크탑 드래그
         div.addEventListener("dragstart", () => { dragId = t.id; div.classList.add("dragging"); });
         div.addEventListener("dragend", () => div.classList.remove("dragging"));
+        // 클릭 → 모달
         div.addEventListener("click", () => openModal(t));
+        // 모바일 길게 누르기 → 바텀시트
+        let pressTimer;
+        div.addEventListener("touchstart", () => { pressTimer = setTimeout(() => { longPressTask = t; document.getElementById("bottomSheet").classList.remove("hidden"); }, 500); }, {passive:true});
+        div.addEventListener("touchend", () => clearTimeout(pressTimer), {passive:true});
+        div.addEventListener("touchmove", () => clearTimeout(pressTimer), {passive:true});
         container.appendChild(div);
       });
     });
+    updateMobileView();
   }
 
   function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
+  // 바텀시트 상태 변경
+  document.querySelectorAll(".sheet-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!longPressTask) return;
+      document.getElementById("bottomSheet").classList.add("hidden");
+      const newStatus = btn.dataset.s;
+      if (newStatus === longPressTask.status) return;
+      const task = tasks.find(t => t.id === longPressTask.id);
+      if (task) { task.status = newStatus; render(); }
+      await apiJSON("/tasks/" + longPressTask.id + "/status", {method:"PATCH", body:JSON.stringify({status:newStatus})});
+      longPressTask = null;
+    });
+  });
+
+  // 드래그 앤 드롭
   document.querySelectorAll(".col-drop").forEach(col => {
     col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("over"); });
     col.addEventListener("dragleave", () => col.classList.remove("over"));
@@ -222,19 +324,18 @@
       const task = tasks.find(t => t.id === dragId);
       if (!task || task.status === newStatus) return;
       task.status = newStatus; render();
-      await apiJSON("/tasks/" + dragId + "/status", { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+      await apiJSON("/tasks/" + dragId + "/status", {method:"PATCH", body:JSON.stringify({status:newStatus})});
     });
   });
 
+  // 인라인 추가
   document.querySelectorAll(".add-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const col = btn.dataset.col;
-      const inlineDiv = document.getElementById("inline-" + col);
+      const inlineDiv = document.getElementById("inline-" + btn.dataset.col);
       inlineDiv.classList.toggle("hidden");
       inlineDiv.querySelector(".inline-input").focus();
     });
   });
-
   document.querySelectorAll(".inline-input").forEach(inp => {
     inp.addEventListener("keydown", async e => {
       if (e.key === "Escape") { inp.value = ""; inp.closest("[id^=inline]").classList.add("hidden"); }
@@ -245,14 +346,14 @@
         const assigneeVal = colDiv.querySelector(".assignee-select").value;
         const assignee_id = assigneeVal ? parseInt(assigneeVal) : null;
         inp.value = "";
-        colDiv.querySelector(".assignee-select").value = user.id || "";
         colDiv.querySelector("[id^=inline]").classList.add("hidden");
-        await apiJSON("/teams/" + teamId + "/tasks", { method: "POST", body: JSON.stringify({ title, assignee_id }) });
+        await apiJSON("/teams/" + teamId + "/tasks", {method:"POST", body:JSON.stringify({title, assignee_id})});
         loadTasks();
       }
     });
   });
 
+  // 필터
   document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       currentFilter = btn.dataset.f;
@@ -263,45 +364,69 @@
     });
   });
 
+  // 모달 열기
   function openModal(t) {
     modalTask = t;
     document.getElementById("modal").classList.remove("hidden");
-    document.getElementById("modalTitle").textContent = "#" + t.id + " " + t.title;
+    document.getElementById("modalId").textContent = "#" + t.id;
+    document.getElementById("modalTitle").textContent = t.title;
     document.getElementById("modalTitleInput").value = t.title;
-    document.getElementById("modalMeta").textContent = "생성자: " + t.creator_id + " · " + new Date(t.created_at).toLocaleString("ko");
+    document.getElementById("modalAssignee").textContent = getMemberLabel(t.assignee_id);
+    const creator = members.find(m => m.id === t.creator_id);
+    document.getElementById("modalCreator").textContent = creator ? "@" + creator.email.split("@")[0] + " (" + creator.email + ")" : t.creator_id;
+    document.getElementById("modalCreatedAt").textContent = new Date(t.created_at).toLocaleString("ko");
     document.querySelectorAll(".status-btn").forEach(b => {
-      const active = b.dataset.s === t.status;
-      b.className = "status-btn px-3 py-1 rounded-lg text-xs border font-semibold " +
-        (active ? (t.status === "TODO" ? "bg-amber-500 text-white border-amber-500" : t.status === "DOING" ? "bg-blue-500 text-white border-blue-500" : "bg-green-500 text-white border-green-500")
-                : "bg-white text-gray-600");
+      const s = b.dataset.s; const active = s === t.status;
+      b.className = "status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold " +
+        (active ? (s==="TODO"?"bg-amber-500 text-white border-amber-500":s==="DOING"?"bg-blue-500 text-white border-blue-500":"bg-green-500 text-white border-green-500") : "bg-white text-gray-600");
     });
-    const isOwnerOrCreator = user.id === t.creator_id;
-    document.getElementById("modalDelete").classList.toggle("hidden", !isOwnerOrCreator);
+    const canDelete = t.creator_id === user.id || members.find(m => m.id === user.id && m.is_owner);
+    document.getElementById("modalDelete").classList.toggle("hidden", !canDelete);
   }
   document.getElementById("modalClose").addEventListener("click", () => document.getElementById("modal").classList.add("hidden"));
   document.querySelectorAll(".status-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".status-btn").forEach(b => b.className = "status-btn px-3 py-1 rounded-lg text-xs border font-semibold bg-white text-gray-600");
+      document.querySelectorAll(".status-btn").forEach(b => b.className = "status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold bg-white text-gray-600");
       const s = btn.dataset.s;
-      btn.className = "status-btn px-3 py-1 rounded-lg text-xs border font-semibold " +
-        (s === "TODO" ? "bg-amber-500 text-white border-amber-500" : s === "DOING" ? "bg-blue-500 text-white border-blue-500" : "bg-green-500 text-white border-green-500");
+      btn.className = "status-btn px-3 py-1.5 rounded-lg text-xs border font-semibold " +
+        (s==="TODO"?"bg-amber-500 text-white border-amber-500":s==="DOING"?"bg-blue-500 text-white border-blue-500":"bg-green-500 text-white border-green-500");
     });
   });
   document.getElementById("modalSave").addEventListener("click", async () => {
     const newTitle = document.getElementById("modalTitleInput").value.trim();
     const newStatus = document.querySelector(".status-btn.bg-amber-500, .status-btn.bg-blue-500, .status-btn.bg-green-500")?.dataset.s;
     if (!newTitle) return;
-    await apiJSON("/tasks/" + modalTask.id, { method: "PUT", body: JSON.stringify({ title: newTitle }) });
+    await apiJSON("/tasks/" + modalTask.id, {method:"PUT", body:JSON.stringify({title:newTitle})});
     if (newStatus && newStatus !== modalTask.status)
-      await apiJSON("/tasks/" + modalTask.id + "/status", { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+      await apiJSON("/tasks/" + modalTask.id + "/status", {method:"PATCH", body:JSON.stringify({status:newStatus})});
     document.getElementById("modal").classList.add("hidden");
     loadTasks();
   });
   document.getElementById("modalDelete").addEventListener("click", async () => {
     if (!confirm("이 카드를 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
-    await apiJSON("/tasks/" + modalTask.id, { method: "DELETE" });
+    await apiJSON("/tasks/" + modalTask.id, {method:"DELETE"});
     document.getElementById("modal").classList.add("hidden");
     loadTasks();
+  });
+  document.getElementById("modalReassign").addEventListener("click", () => {
+    const sel = document.createElement("select");
+    sel.className = "w-full border rounded-lg px-3 py-1.5 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-teal-400";
+    sel.innerHTML = '<option value="">미할당</option>';
+    members.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = (m.id === user.id ? "@me " : "@") + m.email.split("@")[0];
+      if (m.id === modalTask.assignee_id) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const assigneeEl = document.getElementById("modalAssignee");
+    assigneeEl.replaceWith(sel);
+    sel.addEventListener("change", async () => {
+      const newAssignee = sel.value ? parseInt(sel.value) : null;
+      await apiJSON("/tasks/" + modalTask.id, {method:"PUT", body:JSON.stringify({assignee_id: newAssignee})});
+      loadTasks();
+      document.getElementById("modal").classList.add("hidden");
+    });
   });
 
   loadTeam(); loadTasks();
